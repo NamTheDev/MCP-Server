@@ -1,0 +1,5 @@
+<type>: <short description in imperative mood>
+
+[optional body — bulleted, when the change has multiple parts]
+
+[optional footer — BREAKING CHANGE:, Refs: #123, etc.]
