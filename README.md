@@ -45,6 +45,8 @@ bun install
 | `bun run dev` | `bun --watch index.ts` |
 | `bun run start` | `bun run index.ts` |
 | `bun run typecheck` | `tsc --noEmit` |
+| `bun run build:check` | `bun build index.ts --target=bun --outfile=/tmp/...` |
+| `bun run check` | `bun run typecheck && bun run build:check` |
 
 ## Project structure
 
@@ -78,7 +80,6 @@ MCP-Server/
 ├── index.ts
 ├── package.json
 ├── README.md
-├── script.sh
 └── tsconfig.json
 ```
 
@@ -203,7 +204,7 @@ Markdown guides the agent loads before using the corresponding tools.
 | `name` | `TEXT` |
 | `description` | `TEXT` |
 | `tags` | `TEXT` |
-| `created_at` | `TEXT` |
+| `created_at` | `INTEGER` |
 
 ### `database/reminders.db`
 
@@ -242,16 +243,16 @@ Markdown guides the agent loads before using the corresponding tools.
 | `utils/time.ts` | 90 |
 | `tools/agent.ts` | 49 |
 | `database/reminder-db.ts` | 43 |
+| `utils/db.ts` | 26 |
 | `config/time.ts` | 24 |
 | `config/skills.ts` | 19 |
 | `index.ts` | 17 |
-| `utils/db.ts` | 17 |
 | `utils/tags.ts` | 13 |
+| `config/server.ts` | 11 |
 | `config/database.ts` | 10 |
 | `utils/slug.ts` | 10 |
 | `utils/mcp.ts` | 9 |
 | `config/limits.ts` | 5 |
-| `config/server.ts` | 5 |
 | `utils/errors.ts` | 4 |
 
 ## Notes
