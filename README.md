@@ -1,6 +1,6 @@
 # mcp-reminders
 
-> **AI disclaimer:** This project is primarily vibecoded — generated and iterated with AI assistance. Review, test, and audit it before relying on it.
+> **AI disclaimer:** This project is primarily vibecoded — generated and iterated with DeepSeek AI assistance. Review, test, and audit it before relying on it.
 
 An MCP server over stdio that gives an AI assistant tools.
 
