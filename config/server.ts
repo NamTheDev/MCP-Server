@@ -9,3 +9,8 @@ export const SERVER = {
   name: "assistant",
   version: pkg.version,
 } as const;
+
+export const HTTP = {
+  host: process.env.MCP_HOST ?? "127.0.0.1",
+  port: Number(process.env.MCP_PORT ?? 3737),
+} as const;
