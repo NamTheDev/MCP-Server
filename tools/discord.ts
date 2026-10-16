@@ -3,6 +3,7 @@ import * as z from "zod/v4";
 import { discordFetch } from "../utils/discord";
 import { msg } from "../utils/errors";
 import { err, ok } from "../utils/mcp";
+import { guardDiscordTool } from "../utils/auth";
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 interface Call {
@@ -120,6 +121,8 @@ function defineTool(
     async (args: any) => {
       try {
         const { method, path, body, reason } = build(args);
+        const guard = await guardDiscordTool(name, args, { method, path, body, reason });
+        if (!guard.ok) return err(`${name}: ${guard.reason}`);
         const init: RequestInit = { method };
         if (body !== undefined) init.body = JSON.stringify(body);
         if (reason !== undefined && reason !== "") {
@@ -198,6 +201,12 @@ export function registerDiscordTools(server: McpServer): void {
     },
     async ({ user_id, content, embeds, tts }) => {
       try {
+        const guard = await guardDiscordTool(
+          "discord_send_dm",
+          { user_id, content, embeds, tts },
+          { method: "POST", path: "/users/@me/channels", body: { recipient_id: user_id } },
+        );
+        if (!guard.ok) return err(`discord_send_dm: ${guard.reason}`);
         const channel = await discordFetch<{ id: string }>("/users/@me/channels", {
           method: "POST",
           body: JSON.stringify({ recipient_id: user_id }),
@@ -964,6 +973,12 @@ export function registerDiscordTools(server: McpServer): void {
     },
     async ({ guild_id, user_id, action_type, before, after, limit, bot_only, raw }) => {
       try {
+        const guard = await guardDiscordTool(
+          "discord_get_audit_log",
+          { guild_id, user_id, action_type, before, after, limit, bot_only, raw },
+          { method: "GET", path: `/guilds/${guild_id}/audit-logs` },
+        );
+        if (!guard.ok) return err(`discord_get_audit_log: ${guard.reason}`);
         let uid = user_id;
         if (bot_only) {
           const me = await discordFetch<{ id: string }>("/users/@me");

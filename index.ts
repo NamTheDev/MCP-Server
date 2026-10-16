@@ -11,6 +11,8 @@ import { registerKnowledgeTools } from "./tools/knowledge";
 import { registerReminderTools } from "./tools/reminder";
 import { registerDiscordTools } from "./tools/discord";
 import { startReminderScheduler } from "./utils/reminder-scheduler";
+import { reqContext } from "./utils/context";
+import { startDiscordGateway } from "./utils/discord-gateway";
 
 // The factory runs once per request; build a fresh McpServer each time.
 const handler = createMcpHandler(() => {
@@ -37,7 +39,9 @@ const http = createServer((req, res) => {
     return;
   }
 
-  void nodeHandler(req, res);
+  reqContext.run({ headers: req.headers }, () => {
+    void nodeHandler(req, res);
+  });
 });
 
 http.listen(HTTP.port, HTTP.host, () => {
@@ -50,3 +54,11 @@ http.listen(HTTP.port, HTTP.host, () => {
 // already-running server instead of spawning one per chat, this actually
 // fires on schedule regardless of whether a chat is open.
 startReminderScheduler();
+
+// Discord gateway: required for the DM-button approval flow.
+// Runs outbound (no public port needed).
+if (Bun.env.DISCORD_VERIFY_ENABLED === "1") {
+  startDiscordGateway().catch((e) =>
+    console.error(`[gateway] failed to start: ${(e as Error).message}`),
+  );
+}
