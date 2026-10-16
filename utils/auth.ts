@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { AUTH, SCOPES, type Scope } from "../config/auth";
-import { policyFor, type Risk, type ToolPolicy } from "../config/policy";
+import { policyFor, type ToolPolicy } from "../config/policy";
 import { astatements, type UserRow } from "../database/auth-db";
 import { requestApproval, isBatchApproved } from "./approval";
 import { audit } from "./audit";
@@ -14,7 +14,7 @@ export type CallShape = {
 };
 
 export type GuardResult =
-  | { ok: true; user: UserRow; auto: boolean; viaSession: boolean }
+  | { ok: true; user: UserRow; auto: boolean }
   | { ok: false; reason: string };
 
 // ---------- identity ----------
@@ -53,7 +53,7 @@ function parseSignedHeaders(): Identity | null {
   return { userId, verifiedVia: "signed" };
 }
 
-export function resolveIdentity(): Identity | null {
+function resolveIdentity(): Identity | null {
   const signed = parseSignedHeaders();
   if (signed) return signed;
   if (AUTH.operatorId) return { userId: AUTH.operatorId, verifiedVia: "local" };
@@ -62,7 +62,7 @@ export function resolveIdentity(): Identity | null {
 
 // ---------- scopes ----------
 
-export function parseScopes(raw: string): Scope[] {
+function parseScopes(raw: string): Scope[] {
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as Scope[]) : [];
@@ -78,7 +78,7 @@ function hasScope(user: UserRow, need: Scope): boolean {
 
 // ---------- main guard ----------
 
-export async function guardDiscordTool(
+export async function guardTool(
   tool: string,
   args: Record<string, unknown>,
   call: CallShape,
@@ -133,28 +133,15 @@ export async function guardDiscordTool(
   // 4. Low risk: pass
   if (policy.risk === "low") {
     audit(user.user_id, tool, args, "auto", policy.risk, null, null);
-    return { ok: true, user, auto: true, viaSession: false };
+    return { ok: true, user, auto: true };
   }
 
-  // 5. Reuse a session for medium risk
-  if (policy.risk === "medium") {
-    const s = astatements.findSession.get(user.user_id, tool, Date.now());
-    if (s) {
-      astatements.consumeSession.run(s.token, Date.now(), tool);
-      audit(user.user_id, tool, args, "auto", policy.risk, null, "session");
-      return { ok: true, user, auto: true, viaSession: true };
-    }
-  }
-
-  // 6. Recent batch window — the same tool was approved seconds ago.
+  // 5. Recent batch window — the same tool was approved seconds ago.
   if (isBatchApproved(user.user_id, tool)) {
     audit(user.user_id, tool, args, "auto", policy.risk, null, "batch window");
-    return { ok: true, user, auto: true, viaSession: false };
+    return { ok: true, user, auto: true };
   }
 
-  // 7. Everything else needs a button
+  // 6. Everything else needs a button
   return await requestApproval(user, tool, args, call, policy);
 }
-
-// Re-export for convenience in tool call sites.
-export type { Risk };

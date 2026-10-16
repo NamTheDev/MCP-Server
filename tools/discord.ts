@@ -3,7 +3,8 @@ import * as z from "zod/v4";
 import { discordFetch } from "../utils/discord";
 import { msg } from "../utils/errors";
 import { err, ok } from "../utils/mcp";
-import { guardDiscordTool } from "../utils/auth";
+import { guardTool } from "../utils/auth";
+import { defineGuardedTool, type ToolCaller } from "../utils/tool";
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 interface Call {
@@ -106,6 +107,20 @@ const fmtMsg = (d: unknown, raw: boolean | undefined): string => {
   return JSON.stringify(summarizeMessage(d));
 };
 
+const discordCaller: ToolCaller = {
+  guard: guardTool,
+  execute: async ({ method, path, body, reason }) => {
+    const init: RequestInit = { method };
+    if (body !== undefined) init.body = JSON.stringify(body);
+    if (reason !== undefined && reason !== "") {
+      init.headers = {
+        "X-Audit-Log-Reason": encodeURIComponent(reason.slice(0, 512)),
+      };
+    }
+    return discordFetch<unknown>(path, init);
+  },
+};
+
 function defineTool(
   server: McpServer,
   name: string,
@@ -115,28 +130,7 @@ function defineTool(
   format: (d: unknown, a: any) => string = (d) =>
     d === undefined ? "ok" : JSON.stringify(d),
 ): void {
-  server.registerTool(
-    name,
-    { description, inputSchema },
-    async (args: any) => {
-      try {
-        const { method, path, body, reason } = build(args);
-        const guard = await guardDiscordTool(name, args, { method, path, body, reason });
-        if (!guard.ok) return err(`${name}: ${guard.reason}`);
-        const init: RequestInit = { method };
-        if (body !== undefined) init.body = JSON.stringify(body);
-        if (reason !== undefined && reason !== "") {
-          init.headers = {
-            "X-Audit-Log-Reason": encodeURIComponent(reason.slice(0, 512)),
-          };
-        }
-        const data = await discordFetch<unknown>(path, init);
-        return ok(format(data, args));
-      } catch (e) {
-        return err(`${name}: ${msg(e)}`);
-      }
-    },
-  );
+  defineGuardedTool(server, discordCaller, name, description, inputSchema, build, format);
 }
 
 const embed = z.record(z.string(), z.unknown());
@@ -201,7 +195,7 @@ export function registerDiscordTools(server: McpServer): void {
     },
     async ({ user_id, content, embeds, tts }) => {
       try {
-        const guard = await guardDiscordTool(
+        const guard = await guardTool(
           "discord_send_dm",
           { user_id, content, embeds, tts },
           { method: "POST", path: "/users/@me/channels", body: { recipient_id: user_id } },
@@ -973,7 +967,7 @@ export function registerDiscordTools(server: McpServer): void {
     },
     async ({ guild_id, user_id, action_type, before, after, limit, bot_only, raw }) => {
       try {
-        const guard = await guardDiscordTool(
+        const guard = await guardTool(
           "discord_get_audit_log",
           { guild_id, user_id, action_type, before, after, limit, bot_only, raw },
           { method: "GET", path: `/guilds/${guild_id}/audit-logs` },

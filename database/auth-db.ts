@@ -1,9 +1,9 @@
 import { openDb } from "../utils/db";
 
-export const AUTH_DB_PATH =
+const AUTH_DB_PATH =
   process.env.AUTH_DB_PATH ?? `${import.meta.dir}/auth.db`;
 
-export const adb = openDb(AUTH_DB_PATH, { journalMode: "WAL" });
+const adb = openDb(AUTH_DB_PATH, { journalMode: "WAL" });
 
 adb.exec(`
   CREATE TABLE IF NOT EXISTS discord_users (
@@ -35,20 +35,6 @@ adb.exec(`
   CREATE INDEX IF NOT EXISTS idx_vr_pending
     ON discord_verification_requests(user_id, status);
 
-  CREATE TABLE IF NOT EXISTS discord_sessions (
-    token        TEXT PRIMARY KEY,
-    user_id      TEXT NOT NULL,
-    tool         TEXT,
-    scope        TEXT NOT NULL,
-    created_at   INTEGER NOT NULL,
-    expires_at   INTEGER NOT NULL,
-    max_uses     INTEGER NOT NULL DEFAULT 1,
-    uses         INTEGER NOT NULL DEFAULT 0
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_sessions_user
-    ON discord_sessions(user_id, expires_at);
-
   CREATE TABLE IF NOT EXISTS discord_audit (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     ts         INTEGER NOT NULL,
@@ -78,7 +64,7 @@ export type UserRow = {
   last_seen_at: number | null;
 };
 
-export type VerificationRow = {
+type VerificationRow = {
   id: string;
   user_id: string;
   tool: string;
@@ -93,17 +79,6 @@ export type VerificationRow = {
   channel_id: string | null;
   resolved_at: number | null;
   resolved_by: string | null;
-};
-
-export type SessionRow = {
-  token: string;
-  user_id: string;
-  tool: string | null;
-  scope: string;
-  created_at: number;
-  expires_at: number;
-  max_uses: number;
-  uses: number;
 };
 
 export const astatements = {
@@ -151,27 +126,6 @@ export const astatements = {
   ),
   countPendingFor: adb.prepare<{ n: number }, [string, number]>(
     "SELECT COUNT(*) AS n FROM discord_verification_requests WHERE user_id = ?1 AND status = 'pending' AND expires_at > ?2",
-  ),
-
-  insertSession: adb.prepare<
-    SessionRow,
-    [string, string, string | null, string, number, number, number]
-  >(
-    `INSERT INTO discord_sessions
-       (token, user_id, tool, scope, created_at, expires_at, max_uses)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-     RETURNING *`,
-  ),
-  findSession: adb.prepare<SessionRow, [string, string, number]>(
-    `SELECT * FROM discord_sessions
-       WHERE user_id = ?1
-         AND (tool IS NULL OR tool = ?2)
-         AND expires_at > ?3
-         AND uses < max_uses
-       LIMIT 1`,
-  ),
-  consumeSession: adb.prepare<null, [string, number, string]>(
-    "UPDATE discord_sessions SET uses = uses + 1 WHERE token = ?1 AND expires_at > ?2 AND (?3 IS NULL OR tool = ?3)",
   ),
 
   audit: adb.prepare<

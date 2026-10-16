@@ -5,9 +5,9 @@ import { dirname } from "node:path";
 const JOURNAL_MODES = [
   "DELETE", "TRUNCATE", "PERSIST", "MEMORY", "WAL", "OFF",
 ] as const;
-export type JournalMode = (typeof JOURNAL_MODES)[number];
+type JournalMode = (typeof JOURNAL_MODES)[number];
 
-export type OpenDbOptions = {
+type OpenDbOptions = {
   journalMode?: JournalMode;
   foreignKeys?: boolean;
 };

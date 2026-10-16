@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 
 export const SKILLS_DIR = resolve(import.meta.dir, "..", "skills");
 
-export type SkillMeta = { file: string; description: string };
+type SkillMeta = { file: string; description: string };
 
 export const SKILLS: Record<string, SkillMeta> = {
   reminder: {

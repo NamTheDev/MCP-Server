@@ -15,8 +15,6 @@ export const AUTH = {
   verifyEnabled: process.env.DISCORD_VERIFY_ENABLED === "1",
   /** How long a pending approval button stays valid. */
   approvalTimeoutMs: Number(process.env.DISCORD_APPROVAL_TIMEOUT_MS ?? 60_000),
-  /** How long an "allow 15 min" session lasts (medium-risk tools only). */
-  sessionTtlMs: Number(process.env.DISCORD_SESSION_TTL_MS ?? 15 * 60_000),
   /**
    * After a manual approval, calls of the same tool by the same user
    * auto-approve for this long. Handles sequential batches. Set to 0 to

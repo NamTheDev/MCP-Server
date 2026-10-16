@@ -32,9 +32,9 @@ type PendingBatch = {
   finished: boolean;
 };
 
-export type ApprovalStatus = "pending" | "approved" | "denied" | "expired";
+type ApprovalStatus = "pending" | "approved" | "denied" | "expired";
 
-export type ApprovalResolution = {
+type ApprovalResolution = {
   label: string;
   embed: EmbedBuilder;
   rows: ActionRowBuilder<ButtonBuilder>[];
@@ -100,7 +100,7 @@ export async function requestApproval(
     const approved = await promise;
     if (approved) {
       audit(user.user_id, tool, args, "approved", policy.risk, existing.id, "batched");
-      return { ok: true, user, auto: false, viaSession: false };
+      return { ok: true, user, auto: false };
     }
     audit(user.user_id, tool, args, "denied", policy.risk, existing.id, "batched");
     return { ok: false, reason: "Request denied by user." };
@@ -222,7 +222,7 @@ export async function requestApproval(
   const approved = await promise;
   if (approved) {
     audit(user.user_id, tool, args, "approved", policy.risk, id, null);
-    return { ok: true, user, auto: false, viaSession: false };
+    return { ok: true, user, auto: false };
   }
 
   const final = astatements.getRequest.get(id);

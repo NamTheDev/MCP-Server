@@ -1,7 +1,6 @@
 import { KNOWLEDGE_DB_PATH } from "../config/database";
 import { openDb } from "../utils/db";
 
-export { KNOWLEDGE_DB_PATH };
 
 export const kdb = openDb(KNOWLEDGE_DB_PATH, {
   journalMode: "WAL",
@@ -37,7 +36,7 @@ export type KnowledgeRow = {
   created_at: number;
 };
 
-export type SectionRow = {
+type SectionRow = {
   id: number;
   knowledge_id: number;
   position: number;

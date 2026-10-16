@@ -13,7 +13,7 @@ export type ToolPolicy = { risk: Risk; scope: Scope };
  *
  * Anything missing falls back to: GET => low/read, otherwise high/write.
  */
-export const TOOL_POLICY: Record<string, ToolPolicy> = {
+const TOOL_POLICY: Record<string, ToolPolicy> = {
   // Bot
   discord_get_bot: { risk: "low", scope: "read" },
   discord_modify_bot: { risk: "critical", scope: "admin" },

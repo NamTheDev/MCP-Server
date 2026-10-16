@@ -1,9 +1,8 @@
 import { REMINDER_DB_PATH } from "../config/database";
 import { openDb } from "../utils/db";
 
-export { REMINDER_DB_PATH };
 
-export const db = openDb(REMINDER_DB_PATH, { journalMode: "WAL" });
+const db = openDb(REMINDER_DB_PATH, { journalMode: "WAL" });
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS reminders (
@@ -65,7 +64,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_reminders_pending ON reminders(sent_at, due_at);
 `);
 
-export type ReminderRow = {
+type ReminderRow = {
   id: number;
   text: string;
   due_at: number;
