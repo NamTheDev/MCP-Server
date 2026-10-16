@@ -15,4 +15,9 @@ export const SKILLS: Record<string, SkillMeta> = {
     description:
       "How to use knowledge tools: store, list, search, read, update, and edit sections.",
   },
+  discord: {
+    file: "discord.md",
+    description:
+      "How to use the Discord tools: read/write messages, manage channels, roles, members, threads, and webhooks.",
+  },
 };

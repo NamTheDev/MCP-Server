@@ -4,10 +4,12 @@ import { SERVER } from "./config/server";
 import { registerAgentTools } from "./tools/agent";
 import { registerKnowledgeTools } from "./tools/knowledge";
 import { registerReminderTools } from "./tools/reminder";
+import { registerDiscordTools } from "./tools/discord";
 
 const server = new McpServer({ name: SERVER.name, version: SERVER.version });
 registerReminderTools(server);
 registerKnowledgeTools(server);
+registerDiscordTools(server);
 registerAgentTools(server);
 
 const transport = new StdioServerTransport();
