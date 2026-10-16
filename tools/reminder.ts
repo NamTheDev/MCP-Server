@@ -5,24 +5,31 @@ import { statements } from "../database/reminder-db";
 import { err, ok } from "../utils/mcp";
 import { fmt, humanDelta, parseWhen } from "../utils/time";
 
+const emailSchema = z.string().email();
+
 export function registerReminderTools(server: McpServer): void {
   server.registerTool(
     "add_reminder",
     {
       description:
-        "Save a future reminder. `when` is parsed server-side (relative or absolute).",
-      inputSchema: { text: z.string().min(1), when: z.string().min(1) },
+        "Save a future reminder. `when` is parsed server-side (relative or absolute). " +
+        "`email` is required — the address is notified when the reminder is due.",
+      inputSchema: {
+        text: z.string().min(1),
+        when: z.string().min(1),
+        email: emailSchema,
+      },
     },
-    async ({ text, when }) => {
+    async ({ text, when, email }) => {
       const d = parseWhen(when);
       if (!d) return err(`Couldn't parse time: "${when}".`);
       if (d.getTime() <= Date.now()) return err("That time is in the past.");
-      const row = statements.insert.get(text, d.getTime(), Date.now());
+      const row = statements.insert.get(text, d.getTime(), Date.now(), email);
       if (!row) return err("Failed to save reminder.");
       return ok(
         `Reminder #${row.id}: "${row.text}" due ${fmt(row.due_at)} (${humanDelta(
           row.due_at - Date.now(),
-        )}).`,
+        )}) — email: ${row.email}.`,
       );
     },
   );
@@ -48,7 +55,7 @@ export function registerReminderTools(server: McpServer): void {
         rows
           .map((r) => {
             const delta = humanDelta(r.due_at - Date.now());
-            return `#${r.id} — ${r.text} — ${fmt(r.due_at)} (${delta})`;
+            return `#${r.id} — ${r.text} — ${fmt(r.due_at)} (${delta}) — email: ${r.email}`;
           })
           .join("\n"),
       );
@@ -59,19 +66,18 @@ export function registerReminderTools(server: McpServer): void {
     "update_reminder",
     {
       description:
-        "Edit a reminder's text and/or due time. Provide at least one field.",
+        "Edit a reminder's text, due time, and email. `email` is required, so " +
+        "always pass the address to keep (or a new one to switch to).",
       inputSchema: {
         id: z.number().int().positive(),
         text: z.string().min(1).optional(),
         when: z.string().min(1).optional(),
+        email: emailSchema,
       },
     },
-    async ({ id, text, when }) => {
+    async ({ id, text, when, email }) => {
       const row = statements.get.get(id);
       if (!row) return err(`No reminder #${id}.`);
-      if (text === undefined && when === undefined) {
-        return err("Provide text and/or when.");
-      }
       let due = row.due_at;
       if (when !== undefined) {
         const d = parseWhen(when);
@@ -79,12 +85,12 @@ export function registerReminderTools(server: McpServer): void {
         if (d.getTime() <= Date.now()) return err("That time is in the past.");
         due = d.getTime();
       }
-      const next = statements.update.get(text ?? row.text, due, id);
+      const next = statements.update.get(text ?? row.text, due, email, id);
       if (!next) return err("Update failed.");
       return ok(
         `Reminder #${id} updated: "${next.text}" due ${fmt(next.due_at)} (${humanDelta(
           next.due_at - Date.now(),
-        )}).`,
+        )}) — email: ${next.email}.`,
       );
     },
   );
