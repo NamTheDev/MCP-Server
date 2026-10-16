@@ -1,4 +1,4 @@
-# mcp-reminders
+# MCP-Server
 
 > **AI disclaimer:** This project is primarily vibecoded — generated and iterated with DeepSeek AI assistance. Review, test, and audit it before relying on it.
 
