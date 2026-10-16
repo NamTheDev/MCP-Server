@@ -40,3 +40,6 @@ database/*.db-shm
 
 # Temporary script files
 script.sh
+
+# Backups
+*-backup
