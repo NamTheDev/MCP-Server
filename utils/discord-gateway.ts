@@ -44,23 +44,18 @@ async function handleButton(i: ButtonInteraction): Promise<void> {
       ? "approved"
       : action === "deny"
         ? "denied"
-        : action === "allow15"
-          ? "allow15"
-          : null;
+        : null;
   if (!decision) return;
 
-  const ok = resolveApproval(id, decision, i.user.id);
-
-  const label =
-    decision === "approved"
-      ? "Approved ✓"
-      : decision === "denied"
-        ? "Denied ✗"
-        : "Allowed for 15 minutes ✓";
+  const res = resolveApproval(id, decision, i.user.id);
 
   try {
-    if (ok) {
-      await i.update({ content: label, embeds: [], components: [] });
+    if (res) {
+      await i.update({
+        content: res.label,
+        embeds: [res.embed.toJSON()],
+        components: res.rows.map((r) => r.toJSON()),
+      });
     } else {
       await i.reply({
         content: "This request is no longer valid.",

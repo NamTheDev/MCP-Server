@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { AUTH, SCOPES, type Scope } from "../config/auth";
 import { policyFor, type Risk, type ToolPolicy } from "../config/policy";
 import { astatements, type UserRow } from "../database/auth-db";
-import { requestApproval } from "./approval";
+import { requestApproval, isBatchApproved } from "./approval";
 import { audit } from "./audit";
 import { currentHeaders } from "./context";
 
@@ -146,7 +146,13 @@ export async function guardDiscordTool(
     }
   }
 
-  // 6. Everything else needs a button
+  // 6. Recent batch window — the same tool was approved seconds ago.
+  if (isBatchApproved(user.user_id, tool)) {
+    audit(user.user_id, tool, args, "auto", policy.risk, null, "batch window");
+    return { ok: true, user, auto: true, viaSession: false };
+  }
+
+  // 7. Everything else needs a button
   return await requestApproval(user, tool, args, call, policy);
 }
 

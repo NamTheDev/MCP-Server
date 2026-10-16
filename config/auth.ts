@@ -17,4 +17,10 @@ export const AUTH = {
   approvalTimeoutMs: Number(process.env.DISCORD_APPROVAL_TIMEOUT_MS ?? 60_000),
   /** How long an "allow 15 min" session lasts (medium-risk tools only). */
   sessionTtlMs: Number(process.env.DISCORD_SESSION_TTL_MS ?? 15 * 60_000),
+  /**
+   * After a manual approval, calls of the same tool by the same user
+   * auto-approve for this long. Handles sequential batches. Set to 0 to
+   * disable.
+   */
+  batchWindowMs: Number(process.env.DISCORD_BATCH_WINDOW_MS ?? 15_000),
 } as const;
