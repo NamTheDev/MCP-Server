@@ -5,7 +5,9 @@ import { statements } from "../database/reminder-db";
 import { err, ok } from "../utils/mcp";
 import { fmt, humanDelta, parseWhen } from "../utils/time";
 
-const emailSchema = z.string().email();
+// Discord snowflakes are 17-20 digit strings. Keep it loose enough to accept
+// well-formed IDs and reject obvious garbage.
+const discordIdSchema = z.string().regex(/^\d{17,20}$/, "must be a Discord snowflake (17-20 digits)");
 
 export function registerReminderTools(server: McpServer): void {
   server.registerTool(
@@ -13,23 +15,23 @@ export function registerReminderTools(server: McpServer): void {
     {
       description:
         "Save a future reminder. `when` is parsed server-side (relative or absolute). " +
-        "`email` is required — the address is notified when the reminder is due.",
+        "`discord_user_id` is required — the target user is DMed when the reminder is due.",
       inputSchema: {
         text: z.string().min(1),
         when: z.string().min(1),
-        email: emailSchema,
+        discord_user_id: discordIdSchema,
       },
     },
-    async ({ text, when, email }) => {
+    async ({ text, when, discord_user_id }) => {
       const d = parseWhen(when);
       if (!d) return err(`Couldn't parse time: "${when}".`);
       if (d.getTime() <= Date.now()) return err("That time is in the past.");
-      const row = statements.insert.get(text, d.getTime(), Date.now(), email);
+      const row = statements.insert.get(text, d.getTime(), Date.now(), discord_user_id);
       if (!row) return err("Failed to save reminder.");
       return ok(
         `Reminder #${row.id}: "${row.text}" due ${fmt(row.due_at)} (${humanDelta(
           row.due_at - Date.now(),
-        )}) — email: ${row.email}.`,
+        )}) — DM to ${row.discord_user_id}.`,
       );
     },
   );
@@ -55,7 +57,8 @@ export function registerReminderTools(server: McpServer): void {
         rows
           .map((r) => {
             const delta = humanDelta(r.due_at - Date.now());
-            return `#${r.id} — ${r.text} — ${fmt(r.due_at)} (${delta}) — email: ${r.email}`;
+            const sent = r.sent_at ? " [sent]" : "";
+            return `#${r.id} — ${r.text} — ${fmt(r.due_at)} (${delta}) — DM to ${r.discord_user_id}${sent}`;
           })
           .join("\n"),
       );
@@ -66,16 +69,16 @@ export function registerReminderTools(server: McpServer): void {
     "update_reminder",
     {
       description:
-        "Edit a reminder's text, due time, and email. `email` is required, so " +
-        "always pass the address to keep (or a new one to switch to).",
+        "Edit a reminder's text, due time, and DM target. `discord_user_id` is " +
+        "required, so always pass the ID to keep (or a new one to switch to).",
       inputSchema: {
         id: z.number().int().positive(),
         text: z.string().min(1).optional(),
         when: z.string().min(1).optional(),
-        email: emailSchema,
+        discord_user_id: discordIdSchema,
       },
     },
-    async ({ id, text, when, email }) => {
+    async ({ id, text, when, discord_user_id }) => {
       const row = statements.get.get(id);
       if (!row) return err(`No reminder #${id}.`);
       let due = row.due_at;
@@ -85,12 +88,22 @@ export function registerReminderTools(server: McpServer): void {
         if (d.getTime() <= Date.now()) return err("That time is in the past.");
         due = d.getTime();
       }
-      const next = statements.update.get(text ?? row.text, due, email, id);
+      // If the new due time is in the future, clear the sent flag so the
+      // scheduler delivers it again. If we're only editing an already-sent,
+      // still-past reminder, leave the flag alone.
+      const nextSentAt = due > Date.now() ? null : row.sent_at;
+      const next = statements.update.get(
+        text ?? row.text,
+        due,
+        discord_user_id,
+        nextSentAt,
+        id,
+      );
       if (!next) return err("Update failed.");
       return ok(
         `Reminder #${id} updated: "${next.text}" due ${fmt(next.due_at)} (${humanDelta(
           next.due_at - Date.now(),
-        )}) — email: ${next.email}.`,
+        )}) — DM to ${next.discord_user_id}.`,
       );
     },
   );

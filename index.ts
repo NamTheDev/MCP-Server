@@ -5,6 +5,7 @@ import { registerAgentTools } from "./tools/agent";
 import { registerKnowledgeTools } from "./tools/knowledge";
 import { registerReminderTools } from "./tools/reminder";
 import { registerDiscordTools } from "./tools/discord";
+import { startReminderScheduler } from "./utils/reminder-scheduler";
 
 const server = new McpServer({ name: SERVER.name, version: SERVER.version });
 registerReminderTools(server);
@@ -14,5 +15,7 @@ registerAgentTools(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+startReminderScheduler();
 
 console.error(`[${SERVER.name}] MCP server ready on stdio`);

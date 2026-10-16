@@ -44,3 +44,21 @@ export async function discordFetch<T = unknown>(
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
+
+/**
+ * Open (or fetch) a DM channel with `userId` and post a message to it.
+ * Returns the created message object.
+ */
+export async function sendDm(
+  userId: string,
+  body: { content?: string; embeds?: unknown[]; tts?: boolean },
+): Promise<unknown> {
+  const channel = await discordFetch<{ id: string }>("/users/@me/channels", {
+    method: "POST",
+    body: JSON.stringify({ recipient_id: userId }),
+  });
+  return discordFetch(`/channels/${channel.id}/messages`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
