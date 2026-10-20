@@ -14,28 +14,57 @@ import { startReminderScheduler } from "./utils/reminder-scheduler";
 import { reqContext } from "./utils/context";
 import { startDiscordGateway } from "./utils/discord-gateway";
 
-// The factory runs once per request; build a fresh McpServer each time.
-const handler = createMcpHandler(() => {
-  const server = new McpServer({ name: SERVER.name, version: SERVER.version });
-  registerReminderTools(server);
-  registerKnowledgeTools(server);
-  registerDiscordTools(server);
-  registerAgentTools(server);
-  return server;
-});
+type Registrar = (server: McpServer) => void;
 
-const nodeHandler = toNodeHandler(handler);
+const GROUPS: Record<string, Registrar[]> = {
+  reminder: [registerReminderTools],
+  knowledge: [registerKnowledgeTools],
+  discord: [registerDiscordTools],
+  agent: [registerAgentTools],
+};
+
+const ALL: Registrar[] = [
+  registerReminderTools,
+  registerKnowledgeTools,
+  registerDiscordTools,
+  registerAgentTools,
+];
+
+const mount = (name: string, registrars: Registrar[]) => {
+  const handler = createMcpHandler(() => {
+    const server = new McpServer({
+      name: `${SERVER.name}-${name}`,
+      version: SERVER.version,
+    });
+    for (const r of registrars) r(server);
+    return server;
+  });
+  return toNodeHandler(handler);
+};
+
+const handlers = new Map<string, ReturnType<typeof mount>>();
+for (const [name, registrars] of Object.entries(GROUPS)) {
+  handlers.set(`/mcp/${name}`, mount(name, registrars));
+}
+handlers.set("/mcp", mount("all", ALL));
+
 const validateHost = localhostHostValidation();
 const validateOrigin = localhostOriginValidation();
 
 const http = createServer((req, res) => {
-  // DNS-rebinding guards. Reject anything that isn't a localhost request
-  // before the MCP handler sees it.
   if (!validateHost(req, res) || !validateOrigin(req, res)) return;
 
-  // Liveness probe, outside the MCP path.
-  if (req.method === "GET" && req.url === "/health") {
+  const raw = (req.url ?? "/").split("?")[0] ?? "/";
+  const pathname = raw.replace(/\/+$/, "") || "/";
+
+  if (req.method === "GET" && pathname === "/health") {
     res.writeHead(200, { "Content-Type": "text/plain" }).end("ok");
+    return;
+  }
+
+  const nodeHandler = handlers.get(pathname);
+  if (!nodeHandler) {
+    res.writeHead(404, { "Content-Type": "text/plain" }).end("not found");
     return;
   }
 
@@ -46,17 +75,15 @@ const http = createServer((req, res) => {
 
 http.listen(HTTP.port, HTTP.host, () => {
   console.error(
-    `[${SERVER.name}] MCP server listening on http://${HTTP.host}:${HTTP.port}/mcp`,
+    `[${SERVER.name}] MCP server listening on http://${HTTP.host}:${HTTP.port}`,
   );
+  for (const p of handlers.keys()) {
+    console.error(`  - http://${HTTP.host}:${HTTP.port}${p}`);
+  }
 });
 
-// Runs inside the same long-lived process. Now that LM Studio connects to an
-// already-running server instead of spawning one per chat, this actually
-// fires on schedule regardless of whether a chat is open.
 startReminderScheduler();
 
-// Discord gateway: required for the DM-button approval flow.
-// Runs outbound (no public port needed).
 if (Bun.env.DISCORD_VERIFY_ENABLED === "1") {
   startDiscordGateway().catch((e) =>
     console.error(`[gateway] failed to start: ${(e as Error).message}`),
