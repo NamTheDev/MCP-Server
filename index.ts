@@ -23,12 +23,7 @@ const GROUPS: Record<string, Registrar[]> = {
   agent: [registerAgentTools],
 };
 
-const ALL: Registrar[] = [
-  registerReminderTools,
-  registerKnowledgeTools,
-  registerDiscordTools,
-  registerAgentTools,
-];
+const ALL: Registrar[] = Object.values(GROUPS).flat();
 
 const mount = (name: string, registrars: Registrar[]) => {
   const handler = createMcpHandler(() => {
