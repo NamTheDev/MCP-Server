@@ -18,4 +18,4 @@ An MCP server over HTTP that gives an AI assistant tools.
 
 Original project material is licensed under the [MIT License](LICENSE).
 
-This repository is an MCP service rather than a browser interface; the shared visual shell in util applies only to user-facing web applications.
+This repository is an MCP service rather than a browser interface.
